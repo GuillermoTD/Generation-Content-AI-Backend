@@ -1,0 +1,218 @@
+// prisma/schema.prisma
+generator client {
+provider = "prisma-client-js"
+}
+datasource db {
+provider = "postgresql"
+url = env("DATABASE_URL")
+}
+// ========================================
+// USUARIOS Y AUTENTICACIÓN
+// ========================================
+model User {
+id String @id @default(cuid())
+email String @unique
+password String
+name String?
+// Metadata
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+// Créditos y suscripción
+credits Int @default(10)
+planType PlanType @default(FREE)
+// Relaciones
+generations Generation[]
+images ImageGeneration[]
+projects Project[]
+templates Template[]
+favorites Favorite[]
+@@map("users")
+}
+enum PlanType {
+FREE
+BASIC
+PRO
+ENTERPRISE
+}
+
+// ========================================
+// PROYECTOS Y ORGANIZACIÓN
+// ========================================
+model Project {
+id String @id @default(cuid())
+name String
+description String?
+color String? // Para identificación visual
+userId String
+user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+// Relaciones
+generations Generation[]
+images ImageGeneration[]
+@@map("projects")
+}
+// ========================================
+// GENERACIÓN DE CONTENIDO DE TEXTO
+// ========================================
+model Generation {
+id String @id @default(cuid())
+// Tipo de contenido
+type ContentType
+// Input del usuario
+prompt String @db.Text
+tone String? // professional, casual, humorous, etc.
+length String? // short, medium, long
+language String @default("es")
+// Output generado
+content String @db.Text
+// Metadata
+model String @default("gpt-4") // Modelo de IA usado
+
+tokensUsed Int?
+// Rating y favoritos
+rating Int? @db.SmallInt // 1-5 estrellas
+isFavorite Boolean @default(false)
+// Relaciones
+userId String
+user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+projectId String?
+project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+// Timestamps
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+// Relaciones
+tags TagOnGeneration[]
+versions GenerationVersion[]
+@@map("generations")
+@@index([userId])
+@@index([type])
+@@index([createdAt])
+}
+enum ContentType {
+INSTAGRAM_POST
+FACEBOOK_POST
+TWITTER_POST
+LINKEDIN_POST
+TIKTOK_SCRIPT
+YOUTUBE_SCRIPT
+BLOG_ARTICLE
+BLOG_INTRO
+BLOG_CONCLUSION
+EMAIL_MARKETING
+AD_COPY
+PRODUCT_DESCRIPTION
+}
+// ========================================
+// VERSIONADO DE CONTENIDO
+// ========================================
+
+model GenerationVersion {
+id String @id @default(cuid())
+content String @db.Text
+prompt String? @db.Text
+generationId String
+generation Generation @relation(fields: [generationId], references: [id], onDelete: Cascade
+createdAt DateTime @default(now())
+@@map("generation_versions")
+@@index([generationId])
+}
+// ========================================
+// GENERACIÓN DE IMÁGENES
+// ========================================
+model ImageGeneration {
+id String @id @default(cuid())
+// Input del usuario
+prompt String @db.Text
+style String? // realistic, illustration, cartoon, etc.
+size String @default("1024x1024") // 256x256, 512x512, 1024x1024
+// Output
+imageUrl String @db.Text // URL de Cloudinary/S3
+// Metadata
+model String @default("dall-e-3")
+// Rating y favoritos
+rating Int? @db.SmallInt
+isFavorite Boolean @default(false)
+// Relaciones
+userId String
+user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+projectId String?
+project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+tags TagOnImage[]
+@@map("image_generations")
+@@index([userId])
+@@index([createdAt])
+}
+// ========================================
+// PLANTILLAS
+// ========================================
+model Template {
+id String @id @default(cuid())
+name String
+description String?
+// Contenido de la plantilla
+promptTemplate String @db.Text
+type ContentType
+// Metadata
+isPublic Boolean @default(false)
+usageCount Int @default(0)
+// Relaciones
+userId String
+user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+@@map("templates")
+@@index([userId])
+@@index([type])
+}
+// ========================================
+// SISTEMA DE TAGS
+// ========================================
+model Tag {
+
+id String @id @default(cuid())
+name String @unique
+color String?
+createdAt DateTime @default(now())
+// Relaciones many-to-many
+generations TagOnGeneration[]
+images TagOnImage[]
+@@map("tags")
+}
+model TagOnGeneration {
+generationId String
+generation Generation @relation(fields: [generationId], references: [id], onDelete: Cascade)
+tagId String
+tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+assignedAt DateTime @default(now())
+@@id([generationId, tagId])
+@@map("tags_on_generations")
+}
+model TagOnImage {
+imageId String
+image ImageGeneration @relation(fields: [imageId], references: [id], onDelete: Cascade)
+tagId String
+tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+assignedAt DateTime @default(now())
+@@id([imageId, tagId])
+@@map("tags_on_images")
+}
+// ========================================
+// FAVORITOS
+// ========================================
+model Favorite {
+id String @id @default(cuid())
+
+userId String
+user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+// Puede ser generación o imagen
+itemType String // "generation" o "image"
+itemId String
+createdAt DateTime @default(now())
+@@unique([userId, itemType, itemId])
+@@map("favorites")
+@@index([userId])
+}
