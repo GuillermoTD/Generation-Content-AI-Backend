@@ -1,16 +1,16 @@
-import { Body, Get, Injectable, Post,UnauthorizedException  } from '@nestjs/common';
+import {Injectable,UnauthorizedException  } from '@nestjs/common';
 import { LoginDTO } from './dto/login.dto';
 import bcrypt from "bcrypt";
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SignupDTO } from './dto/signup.dto';
+import { UserDTO } from './dto/user.dto';
 
 
 @Injectable()
 export class AuthService {
     constructor(private prisma:PrismaService, private jwtService:JwtService){}
     
-    @Post("/login")
     async login(loginDTO:LoginDTO){
         //Datos enviados por el usuario
         const {email, password} = loginDTO;
@@ -50,6 +50,6 @@ export class AuthService {
     }
 
     async signup(signupDTO:SignupDTO){
-
+        return {message:"Esto parece que hace signup"}
     }
 }
